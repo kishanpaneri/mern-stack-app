@@ -6,11 +6,12 @@ const categoryController = {
   async index(req, res, next) {
     let categories;
     try {
-      categories = await Category.find();
+      categories = await Category.find().sort({ updated_at: "desc" });
+
     } catch (error) {
       return res.status(500).json({ error: "Internal server error." });
     }
-    return res.json(categories);
+    return res.json({ status: 200, categories });
   },
 
   async store(req, res, next) {
@@ -38,7 +39,7 @@ const categoryController = {
     let cat;
     try {
       const id = req.params.id;
-      cat = await Category.findById(id)
+      cat = await Category.findById({ _id: id });
     } catch (error) {
       return res
         .status(500)
@@ -52,12 +53,14 @@ const categoryController = {
     try {
       const id = req.params.id;
       const { title, description } = req.body;
-
-      cat = await Category.findOneAndUpdate(
-        { _id: id },
-        { title, description },
-        { new: true }
-      );
+      let updateData = { title, description };
+      if (req.file && req.file.filename) {
+        updateData.thumbnail =
+          "uploads/category/thumbnail/" + req.file.filename;
+      }
+      cat = await Category.findOneAndUpdate({ _id: id }, updateData, {
+        new: true,
+      });
     } catch (error) {
       return res
         .status(500)
