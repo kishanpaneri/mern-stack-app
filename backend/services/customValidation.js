@@ -7,3 +7,4 @@ const categoryValidation = [
 ];
 
 module.exports = { categoryValidation };
+``
