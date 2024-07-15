@@ -6,10 +6,24 @@ const categoryController = {
   async index(req, res, next) {
     let categories;
     try {
-      categories = await Category.find().sort({ updated_at: "desc" });
-
+      categories = await Category.aggregate([
+        {
+          $lookup: {
+            from: "products",
+            localField: "_id",
+            foreignField: "category",
+            as: "products",
+          },
+        },
+      ]);
+      //categories = await Category.find().sort({ updated_at: "desc" });
     } catch (error) {
-      return res.status(500).json({ error: "Internal server error." });
+      console.log(error);
+      return res.json({
+        status: 500,
+        error: "Internal server error.",
+        serverError: error,
+      });
     }
     return res.json({ status: 200, categories });
   },
@@ -39,8 +53,18 @@ const categoryController = {
     let cat;
     try {
       const id = req.params.id;
-      cat = await Category.findById({ _id: id });
+      cat = await Category.aggregate([
+        {
+          $lookup: {
+            from: "products",
+            localField: "_id",
+            foreignField: "category",
+            as: "products",
+          },
+        },
+      ]).findById({ _id: id });
     } catch (error) {
+      console.log(error)
       return res
         .status(500)
         .json({ error: "Internal server error.", serverError: error });
@@ -80,6 +104,40 @@ const categoryController = {
         .json({ error: "Internal server error.", serverError: error });
     }
     res.status(201).json(cat);
+  },
+
+  async categoryWithProductsCount(req, res) {
+    let categories;
+    try {
+      const aggregationPipeline = [
+        {
+          $lookup: {
+            from: "products",
+            localField: "_id",
+            foreignField: "category",
+            as: "products",
+          },
+        },
+        {
+          $addFields: {
+            totalProducts: { $size: "$products" },
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            title: 1,
+            description: 1,
+            thumbnail: 1,
+            totalProducts: 1,
+          },
+        },
+      ];
+      categories = await Category.aggregate(aggregationPipeline);
+    } catch (error) {
+      return res.status(500).json({ error: "Internal server error." });
+    }
+    return res.json({ status: 200, categories });
   },
 };
 
